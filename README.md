@@ -1,70 +1,120 @@
-# Getting Started with Create React App
+# Seo Baro
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Site institucional e plataforma de pedidos da **Seo Baro** — fábrica de tortas artesanais que atende revendedores em todo o Brasil. O projeto apresenta a marca, convida novos parceiros e permite que clientes cadastrados montem pedidos de tortas salgadas inteiras com finalização pelo WhatsApp.
 
-## Available Scripts
+## Sobre o projeto
 
-In the project directory, you can run:
+A Seo Baro produz tortas salgadas em pequenos lotes, com receitas de família e ingredientes selecionados. Este aplicativo web concentra três frentes:
 
-### `npm start`
+- **Página inicial** — apresentação da marca, história, prévia do cardápio e convite para revenda.
+- **Área de pedidos** — cardápio dinâmico com carrinho, acesso restrito a clientes/revendedores autenticados.
+- **Painel administrativo** — gestão de produtos, visualização de pedidos e relatórios de vendas.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+O fluxo de cadastro de novos revendedores e a confirmação final dos pedidos acontecem via **WhatsApp**, mantendo o atendimento próximo e personalizado.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Funcionalidades
 
-### `npm test`
+### Página inicial (`/`)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Hero com destaque para oportunidade de revenda
+- Seção de história da marca
+- Prévia do cardápio (frango, palmito, costelinha)
+- Convite para fazer parte da rede de revendedores
+- Modal de acesso ao pedido (login ou cadastro via WhatsApp)
 
-### `npm run build`
+### Pedidos (`/pedido`)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- Login com e-mail e senha (Firebase Authentication)
+- Cardápio carregado do Firestore (apenas produtos disponíveis)
+- Busca por nome da torta
+- Carrinho com quantidades, dados do cliente e validação de campos
+- Registro do pedido no banco e redirecionamento para WhatsApp com resumo formatado
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Administração (`/admin`)
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- Acesso exclusivo para usuários com `isAdmin: true` no Firestore
+- Gerenciamento do cardápio: criar, editar, ativar/desativar e excluir tortas
+- Carga inicial do cardápio padrão (seed)
+- Listagem de pedidos recebidos
+- Relatório por cliente (CNPJ), com totais de pedidos e tortas
 
-### `npm run eject`
+## Tecnologias
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- [React](https://react.dev/) 19
+- [React Router](https://reactrouter.com/) 7
+- [Firebase](https://firebase.google.com/) — Authentication e Firestore
+- [Create React App](https://github.com/facebook/create-react-app) (react-scripts)
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Estrutura do projeto
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+```
+src/
+├── components/     # Componentes reutilizáveis (Header, Hero, modais, etc.)
+├── contexts/       # AuthContext — estado de autenticação e dados do usuário
+├── pages/          # Home, Pedido e Admin
+├── services/       # Configuração do Firebase
+└── assets/         # Imagens e recursos estáticos
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Rotas
 
-## Learn More
+| Rota      | Acesso        | Descrição                          |
+|-----------|---------------|------------------------------------|
+| `/`       | Público       | Landing page da Seo Baro           |
+| `/pedido` | Autenticado   | Cardápio e carrinho de pedidos     |
+| `/admin`  | Autenticado   | Painel administrativo (só admins)  |
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Usuários não autenticados que tentam acessar `/pedido` ou `/admin` são redirecionados para a home com o modal de login.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Firebase
 
-### Code Splitting
+O projeto usa o Firebase para:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+- **Authentication** — login de clientes/revendedores
+- **Firestore** — coleções `users`, `products` e `orders`
 
-### Analyzing the Bundle Size
+A configuração está em `src/services/firebase.js`. Para rodar localmente, use um projeto Firebase com as regras de segurança adequadas e usuários cadastrados na coleção `users` (com `isAdmin` quando necessário).
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Como executar
 
-### Making a Progressive Web App
+### Pré-requisitos
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+- Node.js (versão LTS recomendada)
+- npm
 
-### Advanced Configuration
+### Instalação
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+```bash
+npm install
+```
 
-### Deployment
+### Desenvolvimento
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+```bash
+npm start
+```
 
-### `npm run build` fails to minify
+Abre em [http://localhost:3000](http://localhost:3000) com hot reload.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+### Build de produção
+
+```bash
+npm run build
+```
+
+Gera os arquivos otimizados na pasta `build/`.
+
+### Testes
+
+```bash
+npm test
+```
+
+## Scripts disponíveis
+
+| Comando         | Descrição                              |
+|-----------------|----------------------------------------|
+| `npm start`     | Servidor de desenvolvimento            |
+| `npm run build` | Build para produção                    |
+| `npm test`      | Executa os testes                      |
+| `npm run eject` | Expõe a configuração do CRA (irreversível) |
