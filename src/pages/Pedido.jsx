@@ -2,42 +2,21 @@ import React from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import tortaInteira from '../assets/images/TortaInteira.png';
+import { useAuth } from '../contexts/AuthContext';
+import { db } from '../services/firebase';
+import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const WHATSAPP_NUMBER = '5519984380002';
 
-const TORTAS_GRANDES = [
-  {
-    id: 'frango',
-    nome: 'Torta de Frango (Inteira)',
-    descricao:
-      'Recheio especial de frango refogado com temperos naturais e uma quantidade generosa de requeijão Catupiry cremoso (o de pote). Massa leve e crocante!',
-    tag: 'Salgada',
-    img: tortaInteira,
-  },
-  {
-    id: 'palmito',
-    nome: 'Torta de Palmito (Inteira)',
-    descricao:
-      'Torta especial com recheio de palmito pupunha e requeijão Catupiry. Uma opção vegetariana perfeita!',
-    tag: 'Salgada',
-    img: tortaInteira,
-  },
-  {
-    id: 'costela',
-    nome: 'Torta de Costela (Inteira)',
-    descricao:
-      'Massa crocante e leve, recheio de costela suína diferenciada — no jeitinho mineiro. E uma camada generosa de requeijão Catupiry cremoso (o de pote).',
-    tag: 'Salgada',
-    img: tortaInteira,
-  },
-];
+// Os produtos agora são carregados do banco de dados Firebase
 
-function buildWhatsAppCartLink({ items, customerName, customerAddress }) {
+function buildWhatsAppCartLink({ items, customerName, customerAddress, customerCnpj }) {
   const lines = items.map((i) => `- ${i.qtd}x ${i.nome}`);
   const parts = ['Olá! Gostaria de fazer um pedido (tortas inteiras):'];
 
-  if (customerName?.trim()) parts.push(`Nome: ${customerName.trim()}`);
-  if (customerAddress?.trim()) parts.push(`Endereço: ${customerAddress.trim()}`);
+  if (customerName?.trim()) parts.push(`Empresa/Nome: ${customerName.trim()}`);
+  if (customerCnpj?.trim()) parts.push(`CNPJ: ${customerCnpj.trim()}`);
+  if (customerAddress?.trim()) parts.push(`Cidade/Endereço: ${customerAddress.trim()}`);
 
   parts.push('', ...lines, '', '');
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(parts.join('\n'))}`;
@@ -85,18 +64,51 @@ function PedidoCard({ item, qtdNoCarrinho, onAdicionar, onRemoverUm }) {
 }
 
 export default function Pedido() {
+  const { userData } = useAuth();
   const [cart, setCart] = React.useState(() => ({}));
   const [cartOpen, setCartOpen] = React.useState(false);
   const [customerName, setCustomerName] = React.useState('');
   const [customerAddress, setCustomerAddress] = React.useState('');
+  const [customerCnpj, setCustomerCnpj] = React.useState('');
   const [submitAttempted, setSubmitAttempted] = React.useState(false);
   const [search, setSearch] = React.useState('');
+  const [availableProducts, setAvailableProducts] = React.useState([]);
+  const [loadingProducts, setLoadingProducts] = React.useState(true);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    async function loadProducts() {
+      try {
+        const q = query(collection(db, 'products'), where('available', '==', true));
+        const querySnapshot = await getDocs(q);
+        const prods = [];
+        querySnapshot.forEach((docSnap) => {
+          // Injeta a imagem padrao (pois não estamos salvando URL no banco neste momento)
+          prods.push({ id: docSnap.id, img: tortaInteira, ...docSnap.data() });
+        });
+        setAvailableProducts(prods);
+      } catch (e) {
+        console.error("Erro ao buscar cardápio:", e);
+      } finally {
+        setLoadingProducts(false);
+      }
+    }
+    loadProducts();
+  }, []);
+
+  React.useEffect(() => {
+    if (userData) {
+      setCustomerName(userData.empresa || userData.responsavel || '');
+      setCustomerAddress(userData.cidade || '');
+      setCustomerCnpj(userData.cnpj || '');
+    }
+  }, [userData]);
 
   const cartItems = React.useMemo(() => {
-    return TORTAS_GRANDES.map((t) => ({ ...t, qtd: cart[t.id] || 0 }))
+    return availableProducts.map((t) => ({ ...t, qtd: cart[t.id] || 0 }))
       .filter((t) => t.qtd > 0)
       .map(({ id, nome, qtd }) => ({ id, nome, qtd }));
-  }, [cart]);
+  }, [cart, availableProducts]);
 
   const cartCount = React.useMemo(
     () => Object.values(cart).reduce((acc, v) => acc + (typeof v === 'number' ? v : 0), 0),
@@ -129,9 +141,45 @@ export default function Pedido() {
 
   const filteredTortas = React.useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return TORTAS_GRANDES;
-    return TORTAS_GRANDES.filter((t) => t.nome.toLowerCase().includes(q));
-  }, [search]);
+    if (!q) return availableProducts;
+    return availableProducts.filter((t) => t.nome.toLowerCase().includes(q));
+  }, [search, availableProducts]);
+
+  const handleFinalizarPedido = async () => {
+    setSubmitAttempted(true);
+    if (!canSendOrder) return;
+
+    setIsSubmitting(true);
+    try {
+      const orderData = {
+        userId: userData?.uid || 'anonymous',
+        customerName,
+        customerCnpj,
+        customerAddress,
+        items: cartItems,
+        totalItems: cartCount,
+        createdAt: serverTimestamp()
+      };
+
+      await addDoc(collection(db, 'orders'), orderData);
+
+      const link = buildWhatsAppCartLink({
+        items: cartItems,
+        customerName,
+        customerAddress,
+        customerCnpj
+      });
+      
+      window.open(link, '_blank');
+      setCart({});
+      setCartOpen(false);
+    } catch (err) {
+      console.error("Erro ao salvar pedido:", err);
+      alert("Houve um erro ao registrar seu pedido. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <>
@@ -163,7 +211,9 @@ export default function Pedido() {
               )}
             </div>
             <div className="pedido-grid">
-              {filteredTortas.map((item) => (
+              {loadingProducts ? (
+                <p>Carregando cardápio...</p>
+              ) : filteredTortas.map((item) => (
                 <PedidoCard
                   key={item.id}
                   item={item}
@@ -173,7 +223,10 @@ export default function Pedido() {
                 />
               ))}
             </div>
-            {filteredTortas.length === 0 && (
+            {!loadingProducts && filteredTortas.length === 0 && search.trim() === '' && (
+              <p className="pedido-note">Nenhuma torta disponível no momento.</p>
+            )}
+            {!loadingProducts && filteredTortas.length === 0 && search.trim() !== '' && (
               <p className="pedido-note">Nenhuma torta encontrada com esse nome.</p>
             )}
             <p className="pedido-note">
@@ -270,30 +323,18 @@ export default function Pedido() {
             )}
 
             <div className="pedido-modal__footer">
-              <button type="button" className="pedido-modal__clear" onClick={clearCart} disabled={cartItems.length === 0}>
+              <button type="button" className="pedido-modal__clear" onClick={clearCart} disabled={cartItems.length === 0 || isSubmitting}>
                 Limpar
               </button>
-              <a
-                className="pedido-modal__send"
-                href={buildWhatsAppCartLink({
-                  items: cartItems,
-                  customerName,
-                  customerAddress,
-                })}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  setSubmitAttempted(true);
-                  if (!canSendOrder) {
-                    e.preventDefault();
-                    return;
-                  }
-                  // Mantém o carrinho para o usuário poder voltar e ajustar se quiser
-                  setCartOpen(false);
-                }}
+              <button
+                type="button"
+                className={`pedido-modal__send ${!canSendOrder || isSubmitting ? 'is-disabled' : ''}`}
+                onClick={handleFinalizarPedido}
+                disabled={isSubmitting}
+                style={{ border: 'none', cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
               >
-                Finalizar no WhatsApp
-              </a>
+                {isSubmitting ? 'Registrando...' : 'Finalizar no WhatsApp'}
+              </button>
             </div>
 
             {cartMissing && <p className="pedido-modal__error">Adicione pelo menos 1 item no carrinho.</p>}

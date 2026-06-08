@@ -56,7 +56,13 @@ function MenuPreview() {
         </div>
         <div className="menu-footer">
           <p className="menu-note">Se quer saber mais sobre outros sabores, entre em contato com a gente.</p>
-          <a href="https://wa.me/5519984380002?text=Oi%20tudo%20bem%20%3F%21%20Gostaria%20de%20saber%20mais%20como%20ser%20um%20revendedor%20%21" target="_blank" rel="noopener noreferrer" className="btn btn-cta">Falar com a gente</a>
+          <button
+            type="button"
+            className="btn btn-cta"
+            onClick={() => window.dispatchEvent(new CustomEvent('sb:open-pedido-signup'))}
+          >
+            Falar com a gente
+          </button>
         </div>
       </div>
     </section>

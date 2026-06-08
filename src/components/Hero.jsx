@@ -5,6 +5,7 @@ function Hero({
   subtitle = 'Produzidas com ingredientes selecionados, sem conservantes e com aquele carinho que faz a diferença.',
   ctaLabel = 'Ver produtos',
   ctaHref = '#produtos',
+  onCtaClick,
   productImage,
   splashImage,
   badgeImage
@@ -31,7 +32,15 @@ function Hero({
           <h1>{title}</h1>
           <p>{subtitle}</p>
           <div className="hero-cta">
-            <a className="btn btn-cta" href={ctaHref} target="_blank" rel="noopener noreferrer">{ctaLabel}</a>
+            {typeof onCtaClick === 'function' ? (
+              <button type="button" className="btn btn-cta" onClick={onCtaClick}>
+                {ctaLabel}
+              </button>
+            ) : (
+              <a className="btn btn-cta" href={ctaHref} target="_blank" rel="noopener noreferrer">
+                {ctaLabel}
+              </a>
+            )}
           </div>
         </div>
         <div className="hero-visual" aria-hidden="true">

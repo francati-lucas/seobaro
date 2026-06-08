@@ -28,7 +28,13 @@ function JoinFamilySection() {
             </div>
           </div>
 
-          <a href="https://wa.me/5519984380002?text=Oi%20tudo%20bem%20%3F%21%20Gostaria%20de%20saber%20mais%20como%20ser%20um%20revendedor%20%21" target="_blank" rel="noopener noreferrer" className="btn btn-cta join-btn">Quero ser revendedor</a>
+          <button
+            type="button"
+            className="btn btn-cta join-btn"
+            onClick={() => window.dispatchEvent(new CustomEvent('sb:open-pedido-signup'))}
+          >
+            Quero ser revendedor
+          </button>
           <p className="join-note">Sem taxa de adesão. Condições especiais para os primeiros pedidos.</p>
         </div>
 

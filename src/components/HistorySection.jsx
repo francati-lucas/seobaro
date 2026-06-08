@@ -22,7 +22,13 @@ function HistorySection({ imageSrc }) {
             com experiências doces e memoráveis.
           </p>
           <div className="history-cta">
-            <a className="btn btn-secondary" href="https://wa.me/5519984380002?text=Oi%20tudo%20bem%20%3F%21%20Gostaria%20de%20saber%20mais%20como%20ser%20um%20revendedor%20%21" target="_blank" rel="noopener noreferrer">Quero ser revendedor</a>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => window.dispatchEvent(new CustomEvent('sb:open-pedido-signup'))}
+            >
+              Quero ser revendedor
+            </button>
           </div>
         </div>
       </div>

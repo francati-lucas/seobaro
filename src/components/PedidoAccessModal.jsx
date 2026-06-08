@@ -1,54 +1,9 @@
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Modal from './Modal';
-
-const AUTH_USER = 'Admin123';
-const AUTH_PASS = 'Admin123';
-const AUTH_STORAGE_KEY = 'seobaro_auth_v1';
-
-/** Tempo máximo para continuar logado sem pedir usuário/senha de novo (24h). Ajuste se quiser mais ou menos. */
-const AUTH_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+import { auth, db } from '../services/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 const WHATSAPP_NUMBER = '5519984380002';
-
-function setAuthed() {
-  const now = Date.now();
-  localStorage.setItem(
-    AUTH_STORAGE_KEY,
-    JSON.stringify({
-      ok: true,
-      at: now,
-      expiresAt: now + AUTH_SESSION_TTL_MS,
-    })
-  );
-}
-
-export function isAuthed() {
-  try {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return false;
-    const data = JSON.parse(raw);
-    if (!data?.ok) return false;
-
-    const expiresAt =
-      typeof data.expiresAt === 'number'
-        ? data.expiresAt
-        : typeof data.at === 'number'
-          ? data.at + AUTH_SESSION_TTL_MS
-          : 0;
-
-    if (!expiresAt || Date.now() >= expiresAt) {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-      return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function clearAuth() {
-  localStorage.removeItem(AUTH_STORAGE_KEY);
-}
 
 function buildCadastroWhatsAppLink({ empresa, cnpj, responsavel, whatsapp, cidade, obs }) {
   const parts = [
@@ -69,26 +24,29 @@ function StepPill({ active, children }) {
 }
 
 export default function PedidoAccessModal({ open, initialStep = 'choose', onClose, onSuccess }) {
-  const [step, setStep] = React.useState(initialStep);
+  const [step, setStep] = useState(initialStep);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) return;
     setStep(initialStep);
   }, [initialStep, open]);
 
-  const [user, setUser] = React.useState('');
-  const [pass, setPass] = React.useState('');
-  const [loginError, setLoginError] = React.useState('');
+  // Login State
+  const [email, setEmail] = useState('');
+  const [pass, setPass] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [empresa, setEmpresa] = React.useState('');
-  const [cnpj, setCnpj] = React.useState('');
-  const [responsavel, setResponsavel] = React.useState('');
-  const [whatsapp, setWhatsapp] = React.useState('');
-  const [cidade, setCidade] = React.useState('');
-  const [obs, setObs] = React.useState('');
-  const [cadastroTouched, setCadastroTouched] = React.useState(false);
+  // Signup State
+  const [empresa, setEmpresa] = useState('');
+  const [cnpj, setCnpj] = useState('');
+  const [responsavel, setResponsavel] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [obs, setObs] = useState('');
+  const [cadastroTouched, setCadastroTouched] = useState(false);
 
-  const cadastroOk = React.useMemo(() => {
+  const cadastroOk = useMemo(() => {
     return (
       empresa.trim().length > 1 &&
       cnpj.trim().length > 0 &&
@@ -101,21 +59,27 @@ export default function PedidoAccessModal({ open, initialStep = 'choose', onClos
   function closeAndReset() {
     setLoginError('');
     setCadastroTouched(false);
+    setEmail('');
+    setPass('');
+    setIsSubmitting(false);
     onClose?.();
   }
 
-  function doLogin(e) {
+  async function doLogin(e) {
     e.preventDefault();
     setLoginError('');
-    const u = user.trim();
-    const p = pass;
-    if (u === AUTH_USER && p === AUTH_PASS) {
-      setAuthed();
+    setIsSubmitting(true);
+    
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), pass);
       onSuccess?.();
       closeAndReset();
-      return;
+    } catch (err) {
+      console.error(err);
+      setLoginError('E-mail ou senha inválidos.');
+    } finally {
+      setIsSubmitting(false);
     }
-    setLoginError('Usuário ou senha inválidos.');
   }
 
   return (
@@ -137,10 +101,10 @@ export default function PedidoAccessModal({ open, initialStep = 'choose', onClos
           <p className="sb-lead">Você já é cliente/revendedor?</p>
           <div className="sb-grid-2">
             <button type="button" className="sb-btn sb-btn--primary" onClick={() => setStep('login')}>
-              Sou cliente
+              SOU CLIENTE
             </button>
             <button type="button" className="sb-btn sb-btn--secondary" onClick={() => setStep('signup')}>
-              Não sou cliente
+              NÃO SOU CLIENTE
             </button>
           </div>
           <p className="sb-muted">
@@ -153,13 +117,15 @@ export default function PedidoAccessModal({ open, initialStep = 'choose', onClos
         <form className="sb-stack" onSubmit={doLogin}>
           <p className="sb-lead">Faça login para liberar o cardápio de pedidos.</p>
           <label className="sb-field">
-            <span className="sb-field__label">Usuário</span>
+            <span className="sb-field__label">E-mail</span>
             <input
               className="sb-field__input"
-              value={user}
-              onChange={(e) => setUser(e.target.value)}
-              autoComplete="username"
-              placeholder="Digite seu usuário"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              placeholder="Digite seu e-mail"
+              required
             />
           </label>
           <label className="sb-field">
@@ -171,15 +137,16 @@ export default function PedidoAccessModal({ open, initialStep = 'choose', onClos
               onChange={(e) => setPass(e.target.value)}
               autoComplete="current-password"
               placeholder="Digite sua senha"
+              required
             />
           </label>
           {loginError && <div className="sb-alert sb-alert--error">{loginError}</div>}
           <div className="sb-actions">
-            <button type="button" className="sb-btn sb-btn--ghost" onClick={() => setStep('choose')}>
+            <button type="button" className="sb-btn sb-btn--ghost" onClick={() => setStep('choose')} disabled={isSubmitting}>
               Voltar
             </button>
-            <button type="submit" className="sb-btn sb-btn--primary">
-              Entrar
+            <button type="submit" className="sb-btn sb-btn--primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Entrando...' : 'Entrar'}
             </button>
           </div>
         </form>
@@ -187,8 +154,8 @@ export default function PedidoAccessModal({ open, initialStep = 'choose', onClos
 
       {step === 'signup' && (
         <div className="sb-stack">
-          <p className="sb-lead">Faça seu cadastro para revenda.</p>
-          <div className="sb-form">
+          <p className="sb-lead">Faça seu cadastro para análise de revenda.</p>
+          <div className="sb-form" style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '10px' }}>
             <label className={`sb-field ${cadastroTouched && empresa.trim().length < 2 ? 'has-error' : ''}`}>
               <span className="sb-field__label">Nome da empresa</span>
               <input
@@ -243,7 +210,7 @@ export default function PedidoAccessModal({ open, initialStep = 'choose', onClos
                 onBlur={() => setCadastroTouched(true)}
               />
             </label>
-
+            
             <label className="sb-field sb-field--full">
               <span className="sb-field__label">Observações (opcional)</span>
               <textarea
@@ -257,7 +224,7 @@ export default function PedidoAccessModal({ open, initialStep = 'choose', onClos
           </div>
 
           {cadastroTouched && !cadastroOk && (
-            <div className="sb-alert sb-alert--error">Preencha os campos obrigatórios para enviar.</div>
+            <div className="sb-alert sb-alert--error">Preencha os campos obrigatórios corretamente.</div>
           )}
 
           <div className="sb-actions">
@@ -293,4 +260,3 @@ export default function PedidoAccessModal({ open, initialStep = 'choose', onClos
     </Modal>
   );
 }
-

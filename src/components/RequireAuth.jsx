@@ -1,10 +1,13 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { isAuthed } from './PedidoAccessModal';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function RequireAuth({ children }) {
   const location = useLocation();
-  if (isAuthed()) return <>{children}</>;
+  const { currentUser } = useAuth();
+  
+  if (currentUser) return <>{children}</>;
+  
   const params = new URLSearchParams(location.search || '');
   params.set('auth', 'required');
   return (
@@ -13,6 +16,7 @@ export default function RequireAuth({ children }) {
         pathname: '/',
         search: `?${params.toString()}`,
       }}
+      state={{ from: location }}
       replace
     />
   );

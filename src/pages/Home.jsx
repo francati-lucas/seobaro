@@ -18,7 +18,7 @@ function Home() {
           title="A melhor torta de frango do Mundo"
           subtitle="Agora pode ser sua oportunidade de negócio, transforme cada fatia em sucesso!"
           ctaLabel="Seja um revendedor"
-          ctaHref="https://wa.me/5519984380002?text=Oi%20tudo%20bem%20%3F%21%20Gostaria%20de%20saber%20mais%20como%20ser%20um%20revendedor%20%21"
+          onCtaClick={() => window.dispatchEvent(new CustomEvent('sb:open-pedido-signup'))}
           productImage={heroImage}
           badgeImage={badge}
         />

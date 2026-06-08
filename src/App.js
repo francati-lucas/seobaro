@@ -1,6 +1,7 @@
 import './App.css';
 import Home from './pages/Home';
 import Pedido from './pages/Pedido';
+import Admin from './pages/Admin';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import RequireAuth from './components/RequireAuth';
 
@@ -14,6 +15,14 @@ function App() {
           element={
             <RequireAuth>
               <Pedido />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <RequireAuth>
+              <Admin />
             </RequireAuth>
           }
         />
